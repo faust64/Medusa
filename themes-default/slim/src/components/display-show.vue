@@ -9,13 +9,12 @@
         <show-header type="show"
                      ref="show-header"
                      @reflow="reflowLayout"
-                     :show-id="id"
-                     :show-indexer="indexer"
+                     :slug="showSlug"
                      @update="statusQualityUpdate"
                      @update-overview-status="filterByOverviewStatus = $event"
         />
 
-        <div class="row" :class="{ fanartBackground: layout.fanartBackground }">
+        <div class="row">
             <div class="col-md-12 top-15 displayShow horizontal-scroll">
                 <!-- Display non-special episodes, paginate if enabled -->
                 <vue-good-table v-if="show.seasons"
@@ -24,7 +23,6 @@
                                 :groupOptions="{
                                     enabled: true,
                                     mode: 'span',
-                                    customChildObject: 'episodes'
                                 }"
                                 :pagination-options="{
                                     enabled: layout.show.pagination.enable,
@@ -62,7 +60,7 @@
                         <h3 class="season-header toggle collapse"><app-link :name="'season-'+ props.row.season" />
                             {{ props.row.season > 0 ? 'Season ' + props.row.season : 'Specials' }}
                             <!-- Only show the search manual season search, when any of the episodes in it is not unaired -->
-                            <app-link v-if="anyEpisodeNotUnaired(props.row)" class="epManualSearch" :href="`home/snatchSelection?indexername=${show.indexer}&seriesid=${show.id[show.indexer]}&amp;season=${props.row.season}&amp;episode=1&amp;manual_search_type=season`">
+                            <app-link v-if="anyEpisodeNotUnaired(props.row)" class="epManualSearch" :href="`home/snatchSelection?showslug=${show.id.slug}&amp;season=${props.row.season}&amp;episode=1&amp;manual_search_type=season`">
                                 <img v-if="config" data-ep-manual-search src="images/manualsearch-white.png" width="16" height="16" alt="search" title="Manual Search">
                             </app-link>
                             <div class="season-scene-exception" :data-season="props.row.season > 0 ? props.row.season : 'Specials'" />
@@ -72,7 +70,7 @@
 
                     <template slot="table-footer-row" slot-scope="{headerRow}">
                         <tr colspan="9999" :id="`season-${headerRow.season}-footer`" class="seasoncols border-bottom shadow">
-                            <th class="col-footer" colspan="15" align="left">Season contains {{headerRow.episodes.length}} episodes with total filesize: {{addFileSize(headerRow)}}</th>
+                            <th class="col-footer" colspan="15" align="left">Season contains {{headerRow.children.length}} episodes with total filesize: {{addFileSize(headerRow)}}</th>
                         </tr>
                         <tr class="spacer" />
                     </template>
@@ -99,11 +97,11 @@
                         </span>
 
                         <span v-else-if="props.column.label == 'Scene Abs. #'" class="align-center">
-                            <input type="text" :placeholder="props.formattedRow[props.column.field]" size="6" maxlength="8"
-                                   class="sceneAbsolute form-control input-scene addQTip" :data-for-absolute="props.formattedRow[props.column.field] || 0"
-                                   :id="`sceneSeasonXEpisode_${show.id[show.indexer]}${props.formattedRow[props.column.field]}`"
+                            <input type="text" :placeholder="`${props.formattedRow[props.column.field]}`" size="6" maxlength="8"
+                                   class="sceneAbsolute form-control input-scene addQTip" :data-for-absolute="props.row.absoluteNumber"
+                                   :id="`sceneAbsolute_${show.id[show.indexer]}_${props.row.absoluteNumber}`"
                                    title="Change this value if scene absolute numbering differs from the indexer absolute numbering. Generally used for anime shows."
-                                   :value="props.formattedRow[props.column.field] ? props.formattedRow[props.column.field] : ''"
+                                   :value="props.formattedRow[props.column.field]"
                                    style="padding: 0; text-align: center; max-width: 60px;">
                         </span>
 
@@ -148,7 +146,7 @@
                                 >
                                 <app-link class="epManualSearch" :id="`${show.indexer}x${show.id[show.indexer]}x${props.row.season}x${props.row.episode}`"
                                           :name="`${show.indexer}x${show.id[show.indexer]}x${props.row.season}x${props.row.episode}`"
-                                          :href="`home/snatchSelection?indexername=${show.indexer}&seriesid=${show.id[show.indexer]}&season=${props.row.season}&episode=${props.row.episode}`"
+                                          :href="`home/snatchSelection?showslug=${show.id.slug}&season=${props.row.season}&episode=${props.row.episode}`"
                                 >
                                     <img data-ep-manual-search src="images/manualsearch.png" width="16" height="16" alt="search" title="Manual Search">
                                 </app-link>
@@ -203,7 +201,8 @@
                                 }"
                                 :sort-options="{
                                     enabled: true,
-                                    initialSortBy: getSortBy('episode', 'desc')
+                                    multipleColumns: true,
+                                    initialSortBy: getSortBy('episode', 'desc') // From mixin manage-cookie.js
                                 }"
                                 :selectOptions="{
                                     enabled: true,
@@ -224,7 +223,7 @@
                         <h3 class="season-header toggle collapse"><app-link :name="'season-'+ props.row.season" />
                             {{ props.row.season > 0 ? 'Season ' + props.row.season : 'Specials' }}
                             <!-- Only show the search manual season search, when any of the episodes in it is not unaired -->
-                            <app-link v-if="anyEpisodeNotUnaired(props.row)" class="epManualSearch" :href="`home/snatchSelection?indexername=${show.indexer}&seriesid=${show.id[show.indexer]}&amp;season=${props.row.season}&amp;episode=1&amp;manual_search_type=season`">
+                            <app-link v-if="anyEpisodeNotUnaired(props.row)" class="epManualSearch" :href="`home/snatchSelection?showslug=${show.id.slug}&amp;season=${props.row.season}&amp;episode=1&amp;manual_search_type=season`">
                                 <img v-if="config" data-ep-manual-search src="images/manualsearch-white.png" width="16" height="16" alt="search" title="Manual Search">
                             </app-link>
                             <div class="season-scene-exception" :data-season="props.row.season > 0 ? props.row.season : 'Specials'" />
@@ -234,7 +233,7 @@
 
                     <template slot="table-footer-row" slot-scope="{headerRow}">
                         <tr colspan="9999" :id="`season-${headerRow.season}-footer`" class="seasoncols border-bottom shadow">
-                            <th class="col-footer" colspan="15" align="left">Season contains {{headerRow.episodes.length}} episodes with total filesize: {{addFileSize(headerRow)}}</th>
+                            <th class="col-footer" colspan="15" align="left">Season contains {{headerRow.children.length}} episodes with total filesize: {{addFileSize(headerRow)}}</th>
                         </tr>
                         <tr class="spacer" />
                     </template>
@@ -261,11 +260,11 @@
                         </span>
 
                         <span v-else-if="props.column.label == 'Scene Abs. #'" class="align-center">
-                            <input type="text" :placeholder="props.formattedRow[props.column.field]" size="6" maxlength="8"
-                                   class="sceneAbsolute form-control input-scene addQTip" :data-for-absolute="props.formattedRow[props.column.field] || 0"
-                                   :id="`sceneSeasonXEpisode_${show.id[show.indexer]}${props.formattedRow[props.column.field]}`"
+                            <input type="text" :placeholder="`${props.formattedRow[props.column.field]}`" size="6" maxlength="8"
+                                   class="sceneAbsolute form-control input-scene addQTip" :data-for-absolute="props.row.absoluteNumber"
+                                   :id="`sceneAbsolute_${show.id[show.indexer]}_${props.row.absoluteNumber}`"
                                    title="Change this value if scene absolute numbering differs from the indexer absolute numbering. Generally used for anime shows."
-                                   :value="props.formattedRow[props.column.field] ? props.formattedRow[props.column.field] : ''"
+                                   :value="props.formattedRow[props.column.field]"
                                    style="padding: 0; text-align: center; max-width: 60px;">
                         </span>
 
@@ -306,7 +305,7 @@
                                 >
                                 <app-link class="epManualSearch" :id="`${show.indexer}x${show.id[show.indexer]}x${props.row.season}x${props.row.episode}`"
                                           :name="`${show.indexer}x${show.id[show.indexer]}x${props.row.season}x${props.row.episode}`"
-                                          :href="`home/snatchSelection?indexername=${show.indexer}&seriesid=${show.id[show.indexer]}&season=${props.row.season}&episode=${props.row.episode}`"
+                                          :href="`home/snatchSelection?showslug=${show.id.slug}&season=${props.row.season}&episode=${props.row.episode}`"
                                 >
                                     <img data-ep-manual-search src="images/manualsearch.png" width="16" height="16" alt="search" title="Manual Search">
                                 </app-link>
@@ -377,12 +376,13 @@
 
                             <div class="modal-body">
                                 <p>Starting to search for the episode</p>
-                                <p v-if="failedSearchEpisode">Would you also like to mark episode {{failedSearchEpisode.slug}} as "failed"? This will make sure the episode cannot be downloaded again</p>
+                                <p v-if="failedSearchEpisodes && failedSearchEpisodes.length === 1">Would you also like to mark episode {{failedSearchEpisodes[0].slug}} as "failed"? This will make sure the episode cannot be downloaded again</p>
+                                <p v-else-if="failedSearchEpisodes">Would you also like to mark episodes {{failedSearchEpisodes.map(ep => ep.slug).join(', ')}} as "failed"? This will make sure the episode cannot be downloaded again</p>
                             </div>
 
                             <div class="modal-footer">
-                                <button type="button" class="btn-medusa btn-danger" data-dismiss="modal" @click="search([failedSearchEpisode], 'backlog'); $modal.hide('query-mark-failed-and-search')">No</button>
-                                <button type="button" class="btn-medusa btn-success" data-dismiss="modal" @click="search([failedSearchEpisode], 'failed'); $modal.hide('query-mark-failed-and-search')">Yes</button>
+                                <button type="button" class="btn-medusa btn-danger" data-dismiss="modal" @click="search(failedSearchEpisodes, 'backlog'); $modal.hide('query-mark-failed-and-search')">No</button>
+                                <button type="button" class="btn-medusa btn-success" data-dismiss="modal" @click="search(failedSearchEpisodes, 'failed'); $modal.hide('query-mark-failed-and-search')">Yes</button>
                                 <button type="button" class="btn-medusa btn-danger" data-dismiss="modal" @click="$modal.hide('query-mark-failed-and-search')">Cancel</button>
                             </div>
                         </div>
@@ -435,16 +435,10 @@ export default {
     },
     props: {
         /**
-         * Show indexer
+         * Show Slug
          */
-        showIndexer: {
+        slug: {
             type: String
-        },
-        /**
-         * Show id
-         */
-        showId: {
-            type: Number
         }
     },
     data() {
@@ -463,7 +457,6 @@ export default {
         };
         return {
             invertTable: true,
-            isMobile: false,
             subtitleSearchComponents: [],
             columns: [{
                 label: 'NFO',
@@ -502,15 +495,6 @@ export default {
                     return getSceneAbsoluteNumbering(row);
                 },
                 type: 'number',
-                /**
-                 * Vue-good-table sort overwrite function.
-                 * @param {Object} x - row1 value for column.
-                 * @param {object} y - row2 value for column.
-                 * @returns {Boolean} - if we want to display this row before the next
-                 */
-                sortFn(x, y) {
-                    return (x < y ? -1 : (x > y ? 1 : 0));
-                },
                 hidden: getCookie('Scene Abs. #')
             }, {
                 label: 'Title',
@@ -558,7 +542,7 @@ export default {
             paginationPerPage: getPaginationPerPage(),
             selectedEpisodes: [],
             // We need to keep track of which episode where trying to search, for the vue-modal
-            failedSearchEpisode: null,
+            failedSearchEpisodes: [],
             backlogSearchEpisodes: [],
             filterByOverviewStatus: false,
             selectedSearch: 'search action'
@@ -577,11 +561,9 @@ export default {
             getOverviewStatus: 'getOverviewStatus',
             fuzzyParseDateTime: 'fuzzyParseDateTime'
         }),
-        indexer() {
-            return this.showIndexer || this.$route.query.indexername;
-        },
-        id() {
-            return this.showId || Number(this.$route.query.seriesid) || undefined;
+        showSlug() {
+            const { slug } = this;
+            return slug || this.$route.query.showslug;
         },
         theme() {
             const { layout } = this;
@@ -719,16 +701,13 @@ export default {
             setRecentShow: 'setRecentShow'
         }),
         async loadShow() {
-            const { setCurrentShow, id, indexer, initializeEpisodes, getShow } = this;
+            const { setCurrentShow, showSlug, initializeEpisodes, getShow } = this;
             // We need detailed info for the xem / scene exceptions, so let's get it.
-            await getShow({ id, indexer, detailed: true });
+            await getShow({ showSlug, detailed: true });
 
             // Let's tell the store which show we currently want as current.
             // Run this after getShow(), as it will trigger the initializeEpisodes() method.
-            setCurrentShow({
-                indexer,
-                id
-            });
+            setCurrentShow(showSlug);
 
             // Load all episodes
             initializeEpisodes();
@@ -745,7 +724,7 @@ export default {
             }
         },
         setQuality(quality, episodes) {
-            const { id, indexer, getEpisodes, show } = this;
+            const { showSlug, getEpisodes, show } = this;
             const patchData = {};
 
             episodes.forEach(episode => {
@@ -756,32 +735,38 @@ export default {
                 .then(_ => {
                     console.info(`patched show ${show.id.slug} with quality ${quality}`);
                     [...new Set(episodes.map(episode => episode.season))].forEach(season => {
-                        getEpisodes({ id, indexer, season });
+                        getEpisodes({ showSlug, season });
                     });
                 }).catch(error => {
                     console.error(String(error));
                 });
         },
         setStatus(status, episodes) {
-            const { id, indexer, getEpisodes, show } = this;
+            const { showSlug, getEpisodes } = this;
             const patchData = {};
 
             episodes.forEach(episode => {
                 patchData[episode.slug] = { status };
             });
 
-            api.patch('series/' + show.id.slug + '/episodes', patchData) // eslint-disable-line no-undef
+            api.patch(`series/${showSlug}/episodes`, patchData) // eslint-disable-line no-undef
                 .then(_ => {
-                    console.info(`patched show ${show.id.slug} with status ${status}`);
+                    console.info(`patched show ${showSlug} with status ${status}`);
                     [...new Set(episodes.map(episode => episode.season))].forEach(season => {
-                        getEpisodes({ id, indexer, season });
+                        getEpisodes({ showSlug, season });
                     });
                 }).catch(error => {
                     console.error(String(error));
                 });
 
+            // New status Wanted
             if (status === 3) {
                 this.$modal.show('query-start-backlog-search', { episodes });
+            }
+
+            // New status Failed
+            if (status === 11) {
+                this.$modal.show('query-mark-failed-and-search', { episodes });
             }
         },
         parseDateFn(row) {
@@ -802,10 +787,10 @@ export default {
          * @returns {string} - Human readable file size.
          */
         addFileSize(headerRow) {
-            return humanFileSize(headerRow.episodes.reduce((a, b) => a + (b.file.size || 0), 0));
+            return humanFileSize(headerRow.children.reduce((a, b) => a + (b.file.size || 0), 0));
         },
         searchSubtitle(event, episode, lang) {
-            const { id, indexer, getEpisodes, show, subtitleSearchComponents } = this;
+            const { showSlug, getEpisodes, show, subtitleSearchComponents } = this;
             const SubtitleSearchClass = Vue.extend(SubtitleSearch); // eslint-disable-line no-undef
             const instance = new SubtitleSearchClass({
                 propsData: { show, episode, key: episode.originalIndex, lang },
@@ -816,7 +801,7 @@ export default {
             instance.$on('update', event => {
                 // This could be replaced by the generic websocket updates in future.
                 if (event.reason === 'new subtitles found') {
-                    getEpisodes({ id, indexer, season: episode.season });
+                    getEpisodes({ showSlug, season: episode.season });
                 }
             });
 
@@ -836,7 +821,7 @@ export default {
         }, 1000),
 
         setEpisodeSceneNumbering(forSeason, forEpisode, sceneSeason, sceneEpisode) {
-            const { $snotify, id, indexer, show } = this;
+            const { $snotify, show } = this;
 
             if (!show.config.scene) {
                 $snotify.warning(
@@ -855,8 +840,7 @@ export default {
             }
 
             $.getJSON('home/setSceneNumbering', {
-                indexername: indexer,
-                seriesid: id,
+                showslug: show.id.slug,
                 forSeason,
                 forEpisode,
                 sceneSeason,
@@ -864,9 +848,9 @@ export default {
             }, data => {
                 // Set the values we get back
                 if (data.sceneSeason === null || data.sceneEpisode === null) {
-                    $('#sceneSeasonXEpisode_' + id + '_' + forSeason + '_' + forEpisode).val('');
+                    $(`#sceneSeasonXEpisode_${show.id[show.indexer]}_${forSeason}_${forEpisode}`).val('');
                 } else {
-                    $('#sceneSeasonXEpisode_' + id + '_' + forSeason + '_' + forEpisode).val(data.sceneSeason + 'x' + data.sceneEpisode);
+                    $(`#sceneSeasonXEpisode_${show.id[show.indexer]}_${forSeason}_${forEpisode}`).val(data.sceneSeason + 'x' + data.sceneEpisode);
                 }
 
                 if (!data.success) {
@@ -879,7 +863,7 @@ export default {
             });
         },
         setAbsoluteSceneNumbering(forAbsolute, sceneAbsolute) {
-            const { $snotify, id, indexer, show } = this;
+            const { $snotify, show } = this;
 
             if (!show.config.scene) {
                 $snotify.warning(
@@ -894,16 +878,15 @@ export default {
             }
 
             $.getJSON('home/setSceneNumbering', {
-                indexername: indexer,
-                seriesid: id,
+                showslug: show.id.slug,
                 forAbsolute,
                 sceneAbsolute
             }, data => {
                 // Set the values we get back
                 if (data.sceneAbsolute === null) {
-                    $('#sceneAbsolute_' + id + '_' + forAbsolute).val('');
+                    $(`#sceneAbsolute_${show.id[show.indexer]}_${forAbsolute}`).val('');
                 } else {
-                    $('#sceneAbsolute_' + id + '_' + forAbsolute).val(data.sceneAbsolute);
+                    $(`#sceneAbsolute_${show.id[show.indexer]}_${forAbsolute}`).val(data.sceneAbsolute);
                 }
 
                 if (!data.success) {
@@ -939,19 +922,19 @@ export default {
          * @returns {Boolean} - true if one of the seasons episodes has a status 'unaired'.
          */
         anyEpisodeNotUnaired(season) {
-            return season.episodes.filter(ep => ep.status !== 'Unaired').length > 0;
+            return season.children.filter(ep => ep.status !== 'Unaired').length > 0;
         },
         episodesInverse(season) {
             const { invertTable } = this;
-            if (!season.episodes) {
+            if (!season.children) {
                 return [];
             }
 
             if (invertTable) {
-                return season.episodes.slice().reverse();
+                return season.children.slice().reverse();
             }
 
-            return season.episodes;
+            return season.children;
         },
         /**
          * Check if the season/episode combination exists in the scene numbering.
@@ -996,12 +979,22 @@ export default {
                 return episode.scene.absoluteNumber;
             }
 
-            if (Object.keys(sceneAbsoluteNumbering).length > 0 && sceneAbsoluteNumbering[episode.absoluteNumber]) {
-                return sceneAbsoluteNumbering[episode.absoluteNumber].sceneAbsolute;
+            if (Object.keys(sceneAbsoluteNumbering).length > 0) {
+                const mapped = sceneAbsoluteNumbering.filter(x => {
+                    return x.absolute === episode.absoluteNumber;
+                });
+                if (mapped.length !== 0) {
+                    return mapped[0].sceneAbsolute;
+                }
             }
 
-            if (Object.keys(xemAbsoluteNumbering).length > 0 && xemAbsoluteNumbering[episode.absoluteNumber]) {
-                return xemAbsoluteNumbering[episode.absoluteNumber].sceneAbsolute;
+            if (Object.keys(xemAbsoluteNumbering).length > 0) {
+                const mapped = xemAbsoluteNumbering.filter(x => {
+                    return x.absolute === episode.absoluteNumber;
+                });
+                if (mapped.length !== 0) {
+                    return mapped[0].sceneAbsolute;
+                }
             }
 
             return episode.scene.absoluteNumber;
@@ -1020,7 +1013,7 @@ export default {
          * @param {Object} event - vue js modal event
          */
         beforeFailedSearchModalClose(event) {
-            this.failedSearchEpisode = event.params.episode;
+            this.failedSearchEpisodes = event.params.episodes;
         },
         retryDownload(episode) {
             const { stateSearch } = this;
@@ -1059,7 +1052,7 @@ export default {
                         this.$refs[`search-${episodes[0].slug}`].src = 'images/no16.png';
                     });
                 }).finally(() => {
-                    this.failedSearchEpisode = null;
+                    this.failedSearchEpisodes = [];
                     this.backlogSearchEpisodes = [];
                 });
         },
@@ -1088,7 +1081,7 @@ export default {
             return (episode.season !== 0 && config.subtitles.enabled && show.config.subtitlesEnabled && !['Snatched', 'Snatched (Proper)', 'Snatched (Best)', 'Downloaded'].includes(episode.status));
         },
         totalSeasonEpisodeSize(season) {
-            return season.episodes.filter(x => x.file && x.file.size > 0).reduce((a, b) => a + b.file.size, 0);
+            return season.children.filter(x => x.file && x.file.size > 0).reduce((a, b) => a + b.file.size, 0);
         },
         getSeasonExceptions(season) {
             const { show } = this;
@@ -1124,7 +1117,7 @@ export default {
             return bindData;
         },
         updateEpisodeWatched(episode, watched) {
-            const { id, indexer, getEpisodes, show } = this;
+            const { showSlug, getEpisodes, show } = this;
             const patchData = {};
 
             patchData[episode.slug] = { watched };
@@ -1132,7 +1125,7 @@ export default {
             api.patch(`series/${show.id.slug}/episodes`, patchData) // eslint-disable-line no-undef
                 .then(_ => {
                     console.info(`patched episode ${episode.slug} with watched set to ${watched}`);
-                    getEpisodes({ id, indexer, season: episode.season });
+                    getEpisodes({ showSlug, season: episode.season });
                 }).catch(error => {
                     console.error(String(error));
                 });
@@ -1189,36 +1182,35 @@ export default {
             return pages[page] || [];
         },
         loadEpisodes(page) {
-            const { id, indexer, getEpisodes } = this;
+            const { showSlug, getEpisodes } = this;
             // Wrap getEpisodes into an async/await function, so we can wait for the season to have been committed
             // before going on to the next one.
-            const _getEpisodes = async (id, indexer) => {
+            const _getEpisodes = async showSlug => {
                 for (const season of this.neededSeasons(page)) {
                     // We're waiting for the results by design, to give vue the chance to update the dom.
                     // If we fire all the promises at once for, for example 25 seasons. We'll overload medusa's app
                     // and chance is high a number of requests will timeout.
-                    await getEpisodes({ id, indexer, season }); // eslint-disable-line no-await-in-loop
+                    await getEpisodes({ showSlug, season }); // eslint-disable-line no-await-in-loop
                 }
             };
 
-            _getEpisodes(id, indexer);
+            _getEpisodes(showSlug);
         },
         initializeEpisodes() {
-            const { getEpisodes, id, indexer, setRecentShow, show } = this;
+            const { getEpisodes, showSlug, setRecentShow, show } = this;
             if (!show.seasons && show.seasonCount) {
                 // Load episodes for the first page.
                 this.loadEpisodes(1);
                 // Always get special episodes if available.
                 if (show.seasonCount.length > 0 && show.seasonCount[0].season === 0) {
-                    getEpisodes({ id, indexer, season: 0 });
+                    getEpisodes({ showSlug, season: 0 });
                 }
             }
 
             if (show.id.slug) {
                 // For now i'm dumping this here
                 setRecentShow({
-                    indexerName: show.indexer,
-                    showId: show.id[show.indexer],
+                    showSlug: show.id.slug,
                     name: show.title
                 });
             }
@@ -1235,8 +1227,7 @@ export default {
             if (event.target.value === 'manual') {
                 // Use the router to navigate to snatchSelection.
                 $router.push({ name: 'snatchSelection', query: {
-                    indexername: show.indexer,
-                    seriesid: show.id[show.indexer],
+                    showslug: show.id.slug,
                     season: episode.season,
                     episode: episode.episode
                 } });
@@ -1356,17 +1347,6 @@ tablesorter.css
     border-left: none;
 }
 
-.displayShow >>> .vgt-table th {
-    /* color: rgb(255, 255, 255); */
-    text-align: center;
-    text-shadow: -1px -1px 0 rgba(0, 0, 0, 0.3);
-    background-color: rgb(51, 51, 51);
-    border-collapse: collapse;
-    font-weight: normal;
-    white-space: nowrap;
-    color: rgb(255, 255, 255);
-}
-
 .displayShow >>> .vgt-table span.break-word {
     word-wrap: break-word;
 }
@@ -1383,14 +1363,35 @@ tablesorter.css
     background-position-y: bottom;
 }
 
-.displayShow >>> .vgt-table thead th.sorting {
-    background-repeat: no-repeat;
-}
-
-.displayShow >>> .vgt-table thead th {
+.displayShow >>> .vgt-table th {
+    text-align: center;
+    text-shadow: -1px -1px 0 rgba(0, 0, 0, 0.3);
+    background-color: rgb(51, 51, 51);
+    white-space: nowrap;
+    color: rgb(255, 255, 255);
+    border-collapse: collapse;
+    font-weight: normal;
+    position: relative;
     background-image: none;
     padding: 4px;
     cursor: default;
+}
+
+.displayShow >>> .vgt-table thead th.sortable button {
+    -webkit-appearance: none;
+    -moz-appearance: none;
+    appearance: none;
+    background: transparent;
+    border: none;
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+}
+
+.displayShow >>> .vgt-table thead th.sorting {
+    background-repeat: no-repeat;
 }
 
 .displayShow >>> .vgt-table input.tablesorter-filter {
@@ -1579,9 +1580,27 @@ td.col-footer {
     margin-right: 2px;
 }
 
+.displayShow >>> .vgt-dropdown > .button-group {
+    position: relative;
+}
+
+.displayShow >>> .dropdown-toggle {
+    position: absolute;
+    z-index: 1;
+    top: 0.1em;
+    right: 0.1em;
+    width: 1em;
+    transition: width 0.2s ease-in-out;
+}
+
+.displayShow >>> .dropdown-toggle:hover,
+.displayShow >>> .dropdown-toggle:active {
+    width: 2em;
+}
+
 .displayShow >>> .vgt-dropdown-menu {
     position: absolute;
-    z-index: 1000;
+    z-index: 1;
     float: left;
     min-width: 160px;
     padding: 5px 0;
@@ -1590,16 +1609,17 @@ td.col-footer {
     text-align: left;
     list-style: none;
     background-clip: padding-box;
-    border-radius: 4px;
+    border-radius: 3px;
+    right: 0;
+    top: 2em;
 }
 
 .displayShow >>> .vgt-dropdown-menu > li > span {
     display: block;
-    padding: 3px 20px;
+    padding: 3px 5px;
     clear: both;
     font-weight: 400;
     line-height: 1.42857143;
     white-space: nowrap;
 }
-
 </style>

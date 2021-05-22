@@ -8,10 +8,11 @@ import {
     history,
     notifications,
     provider,
+    schedule,
     shows,
-    search,
     socket,
-    stats
+    stats,
+    queue
 } from './modules';
 import {
     SOCKET_ONOPEN,
@@ -32,10 +33,11 @@ const store = new Store({
         history,
         notifications,
         provider,
-        search,
+        schedule,
         shows,
         socket,
-        stats
+        stats,
+        queue
     },
     state: {},
     mutations: {},
@@ -64,9 +66,11 @@ const passToStoreHandler = function(eventName, event, next) {
         } else if (event === 'addManualSearchResult') {
             this.store.dispatch('addManualSearchResult', data);
         } else if (event === 'QueueItemUpdate') {
-            this.store.dispatch('updateSearchQueueItem', data);
+            this.store.dispatch('updateQueueItem', data);
         } else if (event === 'QueueItemShowAdd') {
             this.store.dispatch('updateShowQueueItem', data);
+        } else if (event === 'historyUpdate') {
+            this.store.dispatch('updateHistory', data);
         } else {
             window.displayNotification('info', event, data);
         }

@@ -98,7 +98,6 @@ export default {
     computed: {
         ...mapState({
             config: state => state.config.general,
-            indexers: state => state.config.indexers,
             // Renamed because of the computed property 'layout'.
             stateLayout: state => state.config.layout,
             stats: state => state.stats
@@ -175,6 +174,9 @@ export default {
     mounted() {
         const { getStats } = this;
         getStats('show');
+    },
+    beforeCreate() {
+        this.$store.commit('initShowsFromStore');
     }
 };
 </script>

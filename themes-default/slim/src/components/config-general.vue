@@ -57,6 +57,11 @@
                                         <root-dirs />
                                     </config-template>
 
+                                    <config-toggle-slider v-model="general.addTitleWithYear" label="Append (year) to each show title" id="add_title_year">
+                                        <p>Make sure that each show title is added with (year) appended to it</p>
+                                        <p>The show title with year is only used for show folder creation as representation in the UI.</p>
+                                    </config-toggle-slider>
+
                                     <input type="submit" class="btn-medusa config_submitter" value="Save Changes">
                                 </fieldset>
                             </div>
@@ -391,6 +396,10 @@
                                         <p>Example: Downloaded (1080p WEB-DL) ==> Archived (1080p WEB-DL)</p>
                                     </config-template>
 
+                                    <config-toggle-slider v-model="general.experimental" label="Enable experimental features" id="experimental">
+                                        <p>allow for using experimental features</p>
+                                    </config-toggle-slider>
+
                                     <input type="submit" class="btn-medusa config_submitter" value="Save Changes">
                                 </fieldset>
                             </div>
@@ -447,11 +456,11 @@
                                             <option disabled value="">Please select a branch</option>
                                             <option :value="option.value" v-for="option in githubRemoteBranchesOptions" :key="option.value">{{ option.text }}</option>
                                         </select>
-                                        <input :disabled="!githubBranches.length > 0"
+                                        <input :disabled="!gitRemoteBranches.length > 0"
                                                class="btn-medusa btn-inline" style="margin-left: 6px;" type="button" id="branchCheckout"
                                                value="Checkout Branch" @click="validateCheckoutBranch"
                                         >
-                                        <span v-if="!githubBranches.length > 0" style="color:rgb(255, 0, 0);"><p>Error: No branches found.</p></span>
+                                        <span v-if="!gitRemoteBranches.length > 0" style="color:rgb(255, 0, 0);"><p>Error: No branches found.</p></span>
                                         <p v-else>select branch to use (restart required)</p>
                                         <p v-if="checkoutBranchMessage">
                                             <state-switch state="loading" :theme="layout.themeName" />
@@ -531,9 +540,9 @@
                                         <multiselect
                                             v-model="general.git.resetBranches"
                                             :multiple="true"
-                                            :options="githubBranches"
+                                            :options="gitRemoteBranches"
                                         />
-                                        <input class="btn-medusa btn-inline" style="margin-left: 6px;" type="button" id="branch_force_update" value="Update Branches" @click="githubBranchForceUpdate">
+                                        <input class="btn-medusa btn-inline" style="margin-left: 6px;" type="button" id="branch_force_update" value="Update Branches" @click="gitRemoteBranches()">
                                         <span><b>Note:</b> Empty selection means that any branch could be reset.</span>
                                     </config-template>
                                     <input type="submit" class="btn-medusa config_submitter" value="Save Changes">
@@ -543,7 +552,6 @@
                     </div><!-- /component-group3 //-->
                     <br>
                     <h6 class="pull-right"><b>All non-absolute folder locations are relative to <span class="path">{{system.dataDir}}</span></b> </h6>
-                    <input type="submit" class="btn-medusa pull-left config_submitter button" value="Save Changes">
                 </div><!-- /config-components -->
             </form>
         </div>
@@ -661,7 +669,6 @@ export default {
         return {
             defaultPageOptions,
             privacyLevelOptions,
-            githubBranchesForced: [],
             resetBranchSelected: null,
             saving: false,
             selectedBranch: '',
@@ -755,28 +762,24 @@ export default {
             return [];
         },
         githubRemoteBranchesOptions() {
-            const { general, githubBranches, githubBranchForceUpdate, gitRemoteBranches } = this;
+            const { general, getGitRemoteBranches, gitRemoteBranches } = this;
             const { username, password, token } = general.git;
 
             if (!gitRemoteBranches.length > 0) {
-                githubBranchForceUpdate();
+                getGitRemoteBranches();
             }
 
             let filteredBranches = [];
 
             if (((username && password) || token) && general.developer) {
-                filteredBranches = githubBranches;
+                filteredBranches = gitRemoteBranches;
             } else if ((username && password) || token) {
-                filteredBranches = githubBranches.filter(branch => ['master', 'develop'].includes(branch));
+                filteredBranches = gitRemoteBranches.filter(branch => ['master', 'develop'].includes(branch));
             } else {
-                filteredBranches = githubBranches.filter(branch => ['master'].includes(branch));
+                filteredBranches = gitRemoteBranches.filter(branch => ['master'].includes(branch));
             }
 
             return filteredBranches.map(branch => ({ text: branch, value: branch }));
-        },
-        githubBranches() {
-            const { githubBranchesForced, gitRemoteBranches } = this;
-            return gitRemoteBranches || githubBranchesForced;
         },
         githubTokenPopover() {
             const { general } = this;
@@ -790,14 +793,9 @@ export default {
             setConfig: 'setConfig',
             setTheme: 'setTheme',
             getApiKey: 'getApiKey',
-            setLayoutShow: 'setLayoutShow'
+            setLayoutShow: 'setLayoutShow',
+            getGitRemoteBranches: 'getGitRemoteBranches'
         }),
-        async githubBranchForceUpdate() {
-            const response = await apiRoute('home/branchForceUpdate');
-            if (response.data._size > 0) {
-                this.githubBranchesForced = response.data.resetBranches;
-            }
-        },
         async generateApiKey() {
             const { getApiKey, save } = this;
             try {
@@ -967,7 +965,7 @@ export default {
     }
 };
 </script>
-<style>
+<style scoped>
 @import '../style/modal.css';
 
 .display-inline {

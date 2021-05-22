@@ -1,3 +1,121 @@
+## 0.5.12 (07-05-2021)
+
+#### New Features
+- Remove experimental feature flag for Download handler / advanced failed download handling
+- Remove experimental feature flag for Append (year) to each show title
+
+#### Improvements
+- Vueify schedule page. ([9403](https://github.com/pymedusa/Medusa/pull/9403))
+
+#### Fixes
+- Fix download hander failed ([9476](https://github.com/pymedusa/Medusa/pull/9476))
+
+-----
+
+## 0.5.11 (17-04-2021)
+
+#### New Features
+- Added new provicer TvRoad. (credits to IamMika23) ([9424](https://github.com/pymedusa/Medusa/pull/9424))
+
+#### Improvements
+- Vueify history page. ([9201](https://github.com/pymedusa/Medusa/pull/9201))
+- Nebulance: Prevent duplicate results for provider. ([9333](https://github.com/pymedusa/Medusa/pull/9333))
+- Add Cloudflare BFM detection. ([9407](https://github.com/pymedusa/Medusa/pull/9407))
+
+#### Fixes
+- AnimeBytes: Fix exception when processing multi-ep BD specials. ([9396](https://github.com/pymedusa/Medusa/pull/9396))
+- Fix issue with sending torrents to Synology downloadstation. ([9401](https://github.com/pymedusa/Medusa/pull/9401))
+- Fix a number of issues with trakt sync. ([9319](https://github.com/pymedusa/Medusa/pull/9319))
+- Fix shows enriched with wrong IMDB show data. ([9435](https://github.com/pymedusa/Medusa/pull/9435))
+- Fix configured provider ratio getting lost after restart. ([9413](https://github.com/pymedusa/Medusa/pull/9413))
+- Fix sending torrents to Synology Download Station from version 3.8.16.-3566. (credits to BenjV). ([9401](https://github.com/pymedusa/Medusa/pull/9401))
+
+-----
+
+## 0.5.10 (01-03-2021)
+
+#### Fixes
+- Don't save removed episode location as dot ([9284](https://github.com/pymedusa/Medusa/pull/9284))
+
+-----
+
+## 0.5.9 (28-02-2021)
+
+#### New Features
+- Added new postprocessing method download handler. Check ([wiki](https://github.com/pymedusa/Medusa/wiki/Post-Processing#download-handler)) for more info. ([8485](https://github.com/pymedusa/Medusa/pull/8485))
+- Add async postprocessing to manual postprocessing ([8485](https://github.com/pymedusa/Medusa/pull/8485))
+- Add postprocessing to apiv2. sabToNzb uses apiv2 when fork=medusa-apiv2. ([9212](https://github.com/pymedusa/Medusa/pull/9212))
+
+#### Fixes
+- Fix setStatus in manage/episodeStatuses page. ([9228](https://github.com/pymedusa/Medusa/pull/9228))
+- Fix error when using manage/backlogOverview page. ([9208](https://github.com/pymedusa/Medusa/pull/9208))
+
+-----
+
+## 0.5.8 (11-02-2021)
+
+#### Fixes
+- Fix guessit exception when episode initiator is int ([9198](https://github.com/pymedusa/Medusa/pull/9198))
+
+-----
+
+## 0.5.7 (11-02-2021)
+
+#### Fixes
+ - Fix qbittorrent labels not always set ([9165](https://github.com/pymedusa/Medusa/pull/9165))
+ - Fix guessit exception because of missed unique episodes detection ([9184](https://github.com/pymedusa/Medusa/pull/9184))
+
+-----
+
+## 0.5.6 (27-01-2021)
+
+#### Fixes
+ - Fix trakt authentication ([9130](https://github.com/pymedusa/Medusa/pull/9130))
+
+-----
+
+## 0.5.5 (25-01-2021)
+
+#### Fixes
+ - Fix auto update causing malformed checkouts ([9088](https://github.com/pymedusa/Medusa/pull/9088))
+ - Fix trakt recommended shows causing an error when selecting season premiers or new shows ([9080](https://github.com/pymedusa/Medusa/pull/9080))
+ - Prevent exception when auth to medusa using basic authentication ([9100](https://github.com/pymedusa/Medusa/pull/9100))
+
+-----
+
+## 0.5.4 (20-01-2021)
+
+#### Fixes
+ - Fix trakt authentication lost on restart ([9018](https://github.com/pymedusa/Medusa/pull/9018))
+ - Fix issue with trying to mass update a show with scene exceptions ([9067](https://github.com/pymedusa/Medusa/pull/9067))
+ - Fix a number of exceptions caused by new trakt implementation ([9038](https://github.com/pymedusa/Medusa/pull/9038))
+ - Fix black/white list not saved, when trying to add an exception when adding the show ([9047](https://github.com/pymedusa/Medusa/pull/9047))
+ - Avoid exception for shows that don't have show_lists in DB ([9050](https://github.com/pymedusa/Medusa/pull/9050))
+ - Fix version check scheduler running twice ([9057](https://github.com/pymedusa/Medusa/pull/9057))
+ - Fix show-list (table layout) Active column Filter is linked to Xem column Filter ([9066](https://github.com/pymedusa/Medusa/pull/9066))
+
+-----
+
+## 0.5.3 (12-01-2021)
+
+#### Fixes
+- Fix trakt sync exception ([8994](https://github.com/pymedusa/Medusa/pull/8994))
+
+-----
+
+## 0.5.2 (10-01-2021)
+
+#### Improvements
+- Replace trakt lib with PyTrakt (and switch to OAuth device authentication). ([8916](https://github.com/pymedusa/Medusa/pull/8916))
+- Make all thread schedulers hot-reload when enabled/disabled. ([8948](https://github.com/pymedusa/Medusa/pull/8948))
+- Add an option to create .magnet files when a torrent can't be downloaded from a magnet URI, using one of the magnet cache registries. ([8955](https://github.com/pymedusa/Medusa/pull/8955))
+
+#### Fixes
+- Fix setting default episode status (after) when adding a new show. ([8918](https://github.com/pymedusa/Medusa/pull/8918))
+- Fix provider anidex. Add a bypass to its DDOS-Guard protection. ([8955](https://github.com/pymedusa/Medusa/pull/8955))
+
+-----
+
 ## 0.5.1 (16-12-2020)
 
 #### Improvements

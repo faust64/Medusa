@@ -46,6 +46,7 @@ def config_main(monkeypatch, app_config):
     section_data['subtitles'] = {}
     section_data['subtitles']['enabled'] = bool(app.USE_SUBTITLES)
     section_data['recentShows'] = app.SHOWS_RECENT
+    section_data['addTitleWithYear'] = bool(app.ADD_TITLE_WITH_YEAR)
 
     # Pick a random series to show as background.
     # TODO: Recreate this in Vue when the webapp has a reliable list of shows to choose from.
@@ -97,7 +98,7 @@ def config_main(monkeypatch, app_config):
     section_data['availableThemes'] = [{'name': theme.name,
                                         'version': theme.version,
                                         'author': theme.author}
-                                        for theme in app.AVAILABLE_THEMES]
+                                       for theme in app.AVAILABLE_THEMES]
 
     section_data['timePresets'] = list(time_presets)
     section_data['datePresets'] = list(date_presets)
@@ -107,6 +108,7 @@ def config_main(monkeypatch, app_config):
     section_data['webInterface']['log'] = bool(app.WEB_LOG)
     section_data['webInterface']['username'] = app.WEB_USERNAME
     section_data['webInterface']['password'] = app.WEB_PASSWORD
+    section_data['webInterface']['host'] = app.WEB_HOST
     section_data['webInterface']['port'] = int_default(app.WEB_PORT, 8081)
     section_data['webInterface']['notifyOnLogin'] = bool(app.NOTIFY_ON_LOGIN)
     section_data['webInterface']['ipv6'] = bool(app.WEB_IPV6)
@@ -131,6 +133,7 @@ def config_main(monkeypatch, app_config):
     section_data['skipRemovedFiles'] = bool(app.SKIP_REMOVED_FILES)
     section_data['epDefaultDeletedStatus'] = app.EP_DEFAULT_DELETED_STATUS
     section_data['developer'] = bool(app.DEVELOPER)
+    section_data['experimental'] = bool(app.EXPERIMENTAL)
 
     section_data['git'] = {}
     section_data['git']['username'] = app.GIT_USERNAME
@@ -235,6 +238,7 @@ async def test_config_get_consts(http_client, create_url, auth_headers):
             'presets': [{'value': 65518, 'key': 'any', 'name': 'ANY'}],
         },
         'statuses': [{'value': 3, 'key': 'wanted', 'name': 'Wanted'}],
+        'clientStatuses': [{'name': 'Snatched', 'value': 0}],
     })
 
     url = create_url('/config/consts')
@@ -309,6 +313,7 @@ def config_system(monkeypatch):
     section_data['memoryUsage'] = memory_usage_mock()
     section_data['schedulers'] = [{'key': scheduler[0], 'name': scheduler[1]} for scheduler in all_schedulers]
     section_data['showQueue'] = []
+    section_data['postProcessQueue'] = []
     section_data['diskSpace'] = {
         'rootDir': [],
         'tvDownloadDir': {
@@ -363,7 +368,13 @@ async def test_config_get_system(http_client, create_url, auth_headers, config_s
 
     # then
     assert response.code == 200
-    assert expected == json.loads(response.body)
+
+    # hack
+    json_response = json.loads(response.body)
+    json_response['diskSpace']['tvDownloadDir']['location'] = None
+    json_response['diskSpace']['tvDownloadDir']['freeSpace'] = False
+
+    assert expected == json_response
 
 
 @pytest.fixture
@@ -405,6 +416,13 @@ def config_postprocessing():
     section_data['extraScriptsUrl'] = app.EXTRA_SCRIPTS_URL
     section_data['multiEpStrings'] = {str(k): v for k, v in iteritems(common.MULTI_EP_STRINGS)}
 
+    section_data['downloadHandler'] = {}
+    section_data['downloadHandler']['enabled'] = bool(app.USE_DOWNLOAD_HANDLER)
+    section_data['downloadHandler']['frequency'] = int_default(app.DOWNLOAD_HANDLER_FREQUENCY, app.DEFAULT_DOWNLOAD_HANDLER_FREQUENCY)
+    section_data['downloadHandler']['minFrequency'] = int(app.MIN_DOWNLOAD_HANDLER_FREQUENCY)
+    section_data['downloadHandler']['torrentSeedRatio'] = float(app.TORRENT_SEED_RATIO) if app.TORRENT_SEED_RATIO is not None else -1
+    section_data['downloadHandler']['torrentSeedAction'] = app.TORRENT_SEED_ACTION
+
     return section_data
 
 
@@ -445,6 +463,7 @@ def config_clients():
     section_data['torrents']['username'] = app.TORRENT_USERNAME
     section_data['torrents']['password'] = app.TORRENT_PASSWORD
     section_data['torrents']['verifySSL'] = bool(app.TORRENT_VERIFY_CERT)
+    section_data['torrents']['saveMagnetFile'] = bool(app.SAVE_MAGNET_FILE)
 
     section_data['nzb'] = {}
     section_data['nzb']['enabled'] = bool(app.USE_NZBS)
@@ -728,9 +747,6 @@ def config_search():
     section_data['general']['minBacklogFrequency'] = int(app.MIN_BACKLOG_FREQUENCY)
     section_data['general']['dailySearchFrequency'] = int_default(app.DAILYSEARCH_FREQUENCY, app.DEFAULT_DAILYSEARCH_FREQUENCY)
     section_data['general']['minDailySearchFrequency'] = int(app.MIN_DAILYSEARCH_FREQUENCY)
-    section_data['general']['removeFromClient'] = bool(app.REMOVE_FROM_CLIENT)
-    section_data['general']['torrentCheckerFrequency'] = int_default(app.TORRENT_CHECKER_FREQUENCY, app.DEFAULT_TORRENT_CHECKER_FREQUENCY)
-    section_data['general']['minTorrentCheckerFrequency'] = int(app.MIN_TORRENT_CHECKER_FREQUENCY)
     section_data['general']['usenetRetention'] = int_default(app.USENET_RETENTION, 500)
     section_data['general']['trackersList'] = app.TRACKERS_LIST
     section_data['general']['allowHighPriority'] = bool(app.ALLOW_HIGH_PRIORITY)

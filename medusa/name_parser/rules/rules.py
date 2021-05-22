@@ -115,7 +115,7 @@ class FixAnimeReleaseGroup(Rule):
         :type context: dict
         :return:
         """
-        if context.get('show_type') == 'normal':
+        if context.get('show_type') != 'anime':
             return
 
         fileparts = matches.markers.named('path')
@@ -552,7 +552,8 @@ class AnimeWithSeasonAbsoluteEpisodeNumbers(Rule):
         :type context: dict
         :return:
         """
-        if context.get('show_type') == 'normal' or not matches.tagged('anime'):
+        is_anime = context.get('show_type') == 'anime' or matches.tagged('anime')
+        if not is_anime:
             return
 
         fileparts = matches.markers.named('path')
@@ -659,7 +660,8 @@ class AnimeWithSeasonMultipleEpisodeNumbers(Rule):
         :type context: dict
         :return:
         """
-        if context.get('show_type') == 'normal' or not matches.tagged('anime'):
+        is_anime = context.get('show_type') == 'anime' or matches.tagged('anime')
+        if not is_anime:
             return
 
         titles = matches.named('title')
@@ -670,7 +672,7 @@ class AnimeWithSeasonMultipleEpisodeNumbers(Rule):
         if not (2 <= len(episodes) <= 4):
             return
 
-        unique_eps = set([ep.initiator.value for ep in episodes])
+        unique_eps = set([str(ep.initiator.value).lower() for ep in episodes])
         if len(unique_eps) != 2:
             return
 
@@ -957,8 +959,8 @@ class AbsoluteEpisodeNumbers(Rule):
         :type context: dict
         :return:
         """
-        # if it seems to be anime and it doesn't have season
-        if context.get('show_type') != 'normal' and not matches.named('season'):
+        # if it doesn't have a season
+        if not matches.named('season'):
             episodes = matches.named('episode')
             to_remove = []
             to_append = []
@@ -1014,7 +1016,7 @@ class AbsoluteEpisodeWithX26Y(Rule):
             "type": "episode"
         }
     with this rule:
-        For: Show.Name.10.720p
+        For: Show.Name.-.9.x265
         GuessIt found: {
             "title": "Show Name",
             "episode": 9,
@@ -1042,7 +1044,7 @@ class AbsoluteEpisodeWithX26Y(Rule):
         to_append = []
 
         # if it seems to be anime and it doesn't have a season
-        if context.get('show_type') == 'normal' or not matches.named('season') or matches.named('episode'):
+        if context.get('show_type') != 'anime' or not matches.named('season') or matches.named('episode'):
             return
 
         if not matches.tagged('SxxExx'):

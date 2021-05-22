@@ -8,7 +8,7 @@
                     <!-- @TODO: Remove data attributes -->
                     <!-- @SEE: https://github.com/pymedusa/Medusa/pull/5087#discussion_r214077142 -->
                     <h1 class="title" :data-indexer-name="show.indexer" :data-series-id="show.id[show.indexer]" :id="'scene_exception_' + show.id[show.indexer]">
-                        <app-link :href="`home/displayShow?indexername=${show.indexer}&seriesid=${show.id[show.indexer]}`" class="snatchTitle">{{ show.title }}</app-link>
+                        <app-link :href="`home/displayShow?showslug=${show.id.slug}`" class="snatchTitle">{{ show.title }}</app-link>
                     </h1>
                 </div>
 
@@ -63,7 +63,7 @@
                     <div class="show-poster-container">
                         <div class="row">
                             <div class="image-flex-container col-md-12">
-                                <asset default-src="images/poster.png" :show-slug="show.id.slug" type="posterThumb" cls="show-image shadow" :link="true" />
+                                <asset v-if="show.id.slug" default-src="images/poster.png" :show-slug="show.id.slug" type="posterThumb" cls="show-image shadow" :link="true" />
                             </div>
                         </div>
                     </div>
@@ -73,7 +73,7 @@
                     <div class="show-info-container">
                         <div class="row">
                             <div class="pull-right col-lg-3 col-md-3 hidden-sm hidden-xs">
-                                <asset default-src="images/banner.png" :show-slug="show.id.slug" type="banner" cls="show-banner pull-right shadow" :link="true" />
+                                <asset v-if="show.id.slug" default-src="images/banner.png" :show-slug="show.id.slug" type="banner" cls="show-banner pull-right shadow" :link="true" />
                             </div>
                             <div id="indexers" class="pull-left col-lg-9 col-md-9 col-sm-12 col-xs-12">
                                 <span
@@ -133,7 +133,7 @@
                             <!-- Show Summary -->
                             <div ref="summary" v-if="configLoaded" id="summary" class="col-md-12">
                                 <div class="row">
-                                    <div id="show-summary" :class="{summaryFanArt: layout.fanartBackground}" class="col-lg-9 col-md-8 col-sm-8 col-xs-12">
+                                    <div id="show-summary" class="col-lg-9 col-md-8 col-sm-8 col-xs-12">
                                         <table class="summaryTable pull-left">
                                             <tr v-if="show.plot">
                                                 <td colspan="2" style="padding-bottom: 15px;">
@@ -370,16 +370,10 @@ export default {
             ].includes(value)
         },
         /**
-         * Show indexer
+         * Show Slug
          */
-        showIndexer: {
+        slug: {
             type: String
-        },
-        /**
-         * Show id
-         */
-        showId: {
-            type: Number
         },
         /**
          * Season
@@ -454,12 +448,6 @@ export default {
             getQualityPreset: 'getQualityPreset',
             getStatus: 'getStatus'
         }),
-        indexer() {
-            return this.showIndexer || this.$route.query.indexername;
-        },
-        id() {
-            return this.showId || Number(this.$route.query.seriesid) || undefined;
-        },
         season() {
             return resolveToValue(this.showSeason, Number(this.$route.query.season));
         },
@@ -509,7 +497,7 @@ export default {
                 Allowed: 0
             };
             seasons.forEach(season => {
-                season.episodes.forEach(episode => {
+                season.children.forEach(episode => {
                     summary[getOverviewStatus(episode.status, episode.quality, show.config.qualities)] += 1;
                 });
             });
