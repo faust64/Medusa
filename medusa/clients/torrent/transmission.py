@@ -12,6 +12,7 @@ from base64 import b64encode
 
 from medusa import app
 from medusa.clients.torrent.generic import GenericClient
+from medusa.helper.exceptions import DownloadClientConnectionException
 from medusa.logger.adapters.style import BraceAdapter
 from medusa.schedulers.download_handler import ClientStatus
 
@@ -40,6 +41,8 @@ class TransmissionAPI(GenericClient):
 
         self.rpcurl = self.rpcurl.strip('/')
         self.url = urljoin(self.host, self.rpcurl + '/rpc')
+
+        self._get_auth()
 
     def check_response(self):
         """Check if response is a valid json and its a success one."""
@@ -70,6 +73,9 @@ class TransmissionAPI(GenericClient):
 
         if self.response is None:
             return False
+
+        if self.response.status_code == 200:
+            return self.response
 
         auth_match = re.search(r'X-Transmission-Session-Id:\s*(\w+)', self.response.text)
 
@@ -303,8 +309,7 @@ class TransmissionAPI(GenericClient):
         post_data = json.dumps({'arguments': return_params, 'method': 'torrent-get'})
 
         if not self._request(method='post', data=post_data) or not self.check_response():
-            log.warning('Error while fetching torrent {hash} status.', {'hash': info_hash})
-            return
+            raise DownloadClientConnectionException(f'Error while fetching torrent {info_hash} status.')
 
         torrent = self.response.json()['arguments']['torrents']
         if not torrent:

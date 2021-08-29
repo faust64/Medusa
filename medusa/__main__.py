@@ -77,8 +77,9 @@ from medusa.config import (
     check_setting_list, check_setting_str,
     load_provider_setting, save_provider_setting
 )
-from medusa.databases import cache_db, failed_db, main_db
+from medusa.databases import cache_db, failed_db, main_db, recommended_db
 from medusa.failed_history import trim_history
+from medusa.generic_update_queue import GenericQueueScheduler, RecommendedShowUpdateScheduler
 from medusa.indexers.config import INDEXER_TVDBV2, INDEXER_TVMAZE
 from medusa.init.filesystem import is_valid_encoding
 from medusa.providers.generic_provider import GenericProvider
@@ -687,6 +688,9 @@ class Application(object):
             app.CREATE_MISSING_SHOW_DIRS = bool(check_setting_int(app.CFG, 'General', 'create_missing_show_dirs', 0))
             app.ADD_SHOWS_WO_DIR = bool(check_setting_int(app.CFG, 'General', 'add_shows_wo_dir', 0))
 
+            app.PROWLARR_URL = check_setting_str(app.CFG, 'Prowlarr', 'url', '', censor_log='normal')
+            app.PROWLARR_APIKEY = check_setting_str(app.CFG, 'Prowlarr', 'apikey', '', censor_log='high')
+
             app.NZBS = bool(check_setting_int(app.CFG, 'NZBs', 'nzbs', 0))
             app.NZBS_UID = check_setting_str(app.CFG, 'NZBs', 'nzbs_uid', '', censor_log='normal')
             app.NZBS_HASH = check_setting_str(app.CFG, 'NZBs', 'nzbs_hash', '', censor_log='low')
@@ -1027,6 +1031,16 @@ class Application(object):
             app.FALLBACK_PLEX_NOTIFICATIONS = check_setting_int(app.CFG, 'General', 'fallback_plex_notifications', 1)
             app.FALLBACK_PLEX_TIMEOUT = check_setting_int(app.CFG, 'General', 'fallback_plex_timeout', 3)
 
+            app.CACHE_RECOMMENDED_SHOWS = check_setting_int(app.CFG, 'Recommended', 'cache_shows', 1)
+            app.CACHE_RECOMMENDED_TRAKT = check_setting_int(app.CFG, 'Recommended', 'cache_trakt', 1)
+            app.CACHE_RECOMMENDED_IMDB = check_setting_int(app.CFG, 'Recommended', 'cache_imdb', 1)
+            app.CACHE_RECOMMENDED_ANIDB = check_setting_int(app.CFG, 'Recommended', 'cache_anidb', 1)
+            app.CACHE_RECOMMENDED_ANILIST = check_setting_int(app.CFG, 'Recommended', 'cache_anilist', 1)
+            app.RECOMMENDED_SHOW_UPDATE_HOUR = max(
+                0, min(23, check_setting_int(app.CFG, 'Recommended', 'recommended_show_update_hour', app.DEFAULT_RECOMMENDED_SHOW_UPDATE_HOUR))
+            )
+            app.CACHE_RECOMMENDED_TRAKT_LISTS = check_setting_list(app.CFG, 'Recommended', 'trakt_lists', app.CACHE_RECOMMENDED_TRAKT_LISTS)
+
             # Initialize trakt config path.
             trakt.core.CONFIG_PATH = os.path.join(app.CACHE_DIR, '.pytrakt.json')
             trakt.core.load_config()
@@ -1077,6 +1091,9 @@ class Application(object):
             app.TORZNAB_PROVIDERS = check_setting_list(app.CFG, 'Torznab', 'torznab_providers')
             app.torznab_providers_list = TorznabProvider.get_providers_list(app.TORZNAB_PROVIDERS)
 
+            app.PROWLARR_PROVIDERS = check_setting_list(app.CFG, 'Prowlarr', 'providers')
+            # TODO implement ProwlarrProvider.get_providers_list(app.PROWLARR_PROVIDERS)
+
             all_providers = providers.sorted_provider_list()
 
             # dynamically load provider settings
@@ -1125,6 +1142,8 @@ class Application(object):
                     load_provider_setting(app.CFG, provider, 'string', 'url', '', censor_log='low')
                     load_provider_setting(app.CFG, provider, 'list', 'cat_ids', '', split_value=',')
                     load_provider_setting(app.CFG, provider, 'list', 'cap_tv_search', '', split_value=',')
+                    load_provider_setting(app.CFG, provider, 'string', 'manager', '', censor_log='low')
+                    load_provider_setting(app.CFG, provider, 'string', 'id_manager', '', censor_log='low')
 
                 if isinstance(provider, NewznabProvider):
                     # non configurable
@@ -1133,6 +1152,8 @@ class Application(object):
                         load_provider_setting(app.CFG, provider, 'bool', 'needs_auth', 1)
                     # configurable
                     load_provider_setting(app.CFG, provider, 'list', 'cat_ids', '', split_value=',')
+                    load_provider_setting(app.CFG, provider, 'string', 'manager', '', censor_log='low')
+                    load_provider_setting(app.CFG, provider, 'string', 'id_manager', '', censor_log='low')
 
             if not os.path.isfile(app.CONFIG_FILE):
                 logger.debug(u'Unable to find {config!r}, all settings will be default!', config=app.CONFIG_FILE)
@@ -1168,9 +1189,17 @@ class Application(object):
             cache_db_con = db.DBConnection('cache.db')
             db.upgradeDatabase(cache_db_con, cache_db.InitialSchema)
 
+            # initialize the recommended shows database
+            recommended_db_con = db.DBConnection('recommended.db')
+            db.upgradeDatabase(recommended_db_con, recommended_db.InitialSchema)
+
             # Performs a vacuum on cache.db
             logger.debug(u'Performing a vacuum on the CACHE database')
             cache_db_con.action('VACUUM')
+
+            # Performs a vacuum on recommended.db
+            logger.debug(u'Performing a vacuum on the RECOMMENDED database')
+            recommended_db_con.action('VACUUM')
 
             # initialize the failed downloads database
             failed_db_con = db.DBConnection('failed.db')
@@ -1212,6 +1241,18 @@ class Application(object):
             app.show_queue_scheduler = scheduler.Scheduler(show_queue.ShowQueue(),
                                                            cycleTime=datetime.timedelta(seconds=3),
                                                            threadName='SHOWQUEUE')
+
+            app.generic_queue_scheduler = scheduler.Scheduler(
+                GenericQueueScheduler(),
+                cycleTime=datetime.timedelta(seconds=3),
+                threadName='GENERICQUEUESCHEDULER'
+            )
+
+            app.recommended_show_update_scheduler = scheduler.Scheduler(
+                RecommendedShowUpdateScheduler(),
+                threadName='RECOMMENDEDSHOWUPDATESCHEDULER',
+                start_time=datetime.time(hour=app.RECOMMENDED_SHOW_UPDATE_HOUR,
+                                         minute=random.randint(0, 59)))
 
             app.show_update_scheduler = scheduler.Scheduler(show_updater.ShowUpdater(),
                                                             threadName='SHOWUPDATER',
@@ -1366,6 +1407,14 @@ class Application(object):
             app.backlog_search_scheduler.enable = True
             app.backlog_search_scheduler.start()
 
+            # start the generic queue checker
+            app.generic_queue_scheduler.enable = True
+            app.generic_queue_scheduler.start()
+
+            # start the recommended show update scheduler
+            app.recommended_show_update_scheduler.enable = True
+            app.recommended_show_update_scheduler.start()
+
             # start the show updater
             app.show_update_scheduler.enable = True
             app.show_update_scheduler.start()
@@ -1461,6 +1510,7 @@ class Application(object):
                 app.show_update_scheduler,
                 app.episode_update_scheduler,
                 app.version_check_scheduler,
+                app.generic_update_scheduler,
                 app.show_queue_scheduler,
                 app.search_queue_scheduler,
                 app.forced_search_queue_scheduler,
@@ -1679,6 +1729,15 @@ class Application(object):
         new_config['General']['fallback_plex_notifications'] = app.FALLBACK_PLEX_NOTIFICATIONS
         new_config['General']['fallback_plex_timeout'] = app.FALLBACK_PLEX_TIMEOUT
 
+        new_config['Recommended'] = {}
+        new_config['Recommended']['cache_shows'] = app.CACHE_RECOMMENDED_SHOWS
+        new_config['Recommended']['cache_trakt'] = app.CACHE_RECOMMENDED_TRAKT
+        new_config['Recommended']['cache_imdb'] = app.CACHE_RECOMMENDED_IMDB
+        new_config['Recommended']['cache_anidb'] = app.CACHE_RECOMMENDED_ANIDB
+        new_config['Recommended']['cache_anilist'] = app.CACHE_RECOMMENDED_ANILIST
+        new_config['Recommended']['recommended_show_update_hour'] = int(app.RECOMMENDED_SHOW_UPDATE_HOUR)
+        new_config['Recommended']['trakt_lists'] = app.CACHE_RECOMMENDED_TRAKT_LISTS
+
         new_config['Blackhole'] = {}
         new_config['Blackhole']['nzb_dir'] = app.NZB_DIR
         new_config['Blackhole']['torrent_dir'] = app.TORRENT_DIR
@@ -1696,7 +1755,7 @@ class Application(object):
                 'all': [
                     'name', 'url', 'cat_ids', 'api_key', 'username', 'search_mode', 'search_fallback',
                     'enable_daily', 'enable_backlog', 'enable_manualsearch', 'enable_search_delay',
-                    'search_delay',
+                    'search_delay', 'manager', 'id_manager'
                 ],
                 'encrypted': [
                     'password',
@@ -1985,6 +2044,11 @@ class Application(object):
         new_config['Torznab'] = {}
         new_config['Torznab']['torznab_providers'] = app.TORZNAB_PROVIDERS
 
+        new_config['Prowlarr'] = {}
+        new_config['Prowlarr']['providers'] = app.PROWLARR_PROVIDERS
+        new_config['Prowlarr']['url'] = app.PROWLARR_URL
+        new_config['Prowlarr']['apikey'] = app.PROWLARR_APIKEY
+
         new_config['GUI'] = {}
         new_config['GUI']['theme_name'] = app.THEME_NAME
         new_config['GUI']['fanart_background'] = app.FANART_BACKGROUND
@@ -2222,8 +2286,10 @@ class Application(object):
         for sql_show in sql_results:
             try:
                 cur_show = Series(sql_show['indexer'], sql_show['indexer_id'])
-                cur_show.prev_episode()
-                cur_show.next_episode()
+                # update previous and next episode cache
+                cur_show.prev_airdate
+                cur_show.next_airdate
+
                 app.showList.append(cur_show)
             except Exception as error:
                 exception_handler.handle(error, 'There was an error creating the show in {location}',
@@ -2238,7 +2304,7 @@ class Application(object):
         :return:
         """
         try:
-            files_list = [app.APPLICATION_DB, app.CONFIG_INI, app.FAILED_DB, app.CACHE_DB]
+            files_list = [app.APPLICATION_DB, app.CONFIG_INI, app.FAILED_DB, app.CACHE_DB, app.RECOMMENDED_DB]
 
             for filename in files_list:
                 src_file = os.path.join(src_dir, filename)

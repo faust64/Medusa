@@ -2,17 +2,21 @@
 """Test /config route."""
 from __future__ import unicode_literals
 
+import datetime
 import json
-import platform
 import pkgutil
+import platform
 import sys
 
 from medusa import app, classes, common, db, helpers, logger, metadata
-from medusa.indexers.config import INDEXER_TVDBV2
 from medusa.common import cpu_presets
 from medusa.helpers.utils import int_default
+from medusa.indexers.config import INDEXER_TVDBV2
+from medusa.network_timezones import app_timezone
 from medusa.sbdatetime import date_presets, time_presets
 from medusa.schedulers.utils import all_schedulers
+from medusa.show.recommendations.trakt import TraktPopular
+
 from tests.apiv2.conftest import TEST_API_KEY
 
 import pytest
@@ -47,6 +51,7 @@ def config_main(monkeypatch, app_config):
     section_data['subtitles']['enabled'] = bool(app.USE_SUBTITLES)
     section_data['recentShows'] = app.SHOWS_RECENT
     section_data['addTitleWithYear'] = bool(app.ADD_TITLE_WITH_YEAR)
+    section_data['brokenProviders'] = [provider for provider in app.BROKEN_PROVIDERS if provider]
 
     # Pick a random series to show as background.
     # TODO: Recreate this in Vue when the webapp has a reliable list of shows to choose from.
@@ -83,6 +88,10 @@ def config_main(monkeypatch, app_config):
 
     section_data['indexerDefaultLanguage'] = app.INDEXER_DEFAULT_LANGUAGE
     section_data['showUpdateHour'] = int_default(app.SHOWUPDATE_HOUR, app.DEFAULT_SHOWUPDATE_HOUR)
+    section_data['recommendedShowUpdateHour'] = int_default(
+        app.RECOMMENDED_SHOW_UPDATE_HOUR, app.DEFAULT_RECOMMENDED_SHOW_UPDATE_HOUR
+    )
+
     section_data['indexerTimeout'] = int_default(app.INDEXER_TIMEOUT, 20)
     section_data['indexerDefault'] = app.INDEXER_DEFAULT
 
@@ -90,6 +99,15 @@ def config_main(monkeypatch, app_config):
     section_data['plexFallBack']['enable'] = bool(app.FALLBACK_PLEX_ENABLE)
     section_data['plexFallBack']['notifications'] = bool(app.FALLBACK_PLEX_NOTIFICATIONS)
     section_data['plexFallBack']['timeout'] = int(app.FALLBACK_PLEX_TIMEOUT)
+
+    section_data['recommended'] = {'cache': {}, 'trakt': {}}
+    section_data['recommended']['cache']['shows'] = bool(app.CACHE_RECOMMENDED_SHOWS)
+    section_data['recommended']['cache']['trakt'] = bool(app.CACHE_RECOMMENDED_TRAKT)
+    section_data['recommended']['cache']['imdb'] = bool(app.CACHE_RECOMMENDED_IMDB)
+    section_data['recommended']['cache']['anidb'] = bool(app.CACHE_RECOMMENDED_ANIDB)
+    section_data['recommended']['cache']['anilist'] = bool(app.CACHE_RECOMMENDED_ANILIST)
+    section_data['recommended']['trakt']['selectedLists'] = app.CACHE_RECOMMENDED_TRAKT_LISTS
+    section_data['recommended']['trakt']['availableLists'] = TraktPopular.CATEGORIES
 
     section_data['versionNotify'] = bool(app.VERSION_NOTIFY)
     section_data['autoUpdate'] = bool(app.AUTO_UPDATE)
@@ -152,6 +170,12 @@ def config_main(monkeypatch, app_config):
     section_data['backlogOverview'] = {}
     section_data['backlogOverview']['status'] = app.BACKLOG_STATUS
     section_data['backlogOverview']['period'] = app.BACKLOG_PERIOD
+
+    section_data['providers'] = {}
+    section_data['providers']['prowlarr'] = {}
+    section_data['providers']['prowlarr']['url'] = app.PROWLARR_URL
+    section_data['providers']['prowlarr']['apikey'] = app.PROWLARR_APIKEY
+
     return section_data
 
 
@@ -336,6 +360,7 @@ def config_system(monkeypatch):
     section_data['pid'] = app.PID
     section_data['locale'] = '.'.join([text_type(loc or 'Unknown') for loc in app.LOCALE])
     section_data['localUser'] = app.OS_USER or 'Unknown'
+    section_data['timezone'] = app_timezone.tzname(datetime.datetime.now())
     section_data['programDir'] = app.PROG_DIR
     section_data['dataDir'] = app.DATA_DIR
     section_data['configFile'] = app.CONFIG_FILE

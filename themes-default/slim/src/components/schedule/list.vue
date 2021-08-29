@@ -8,15 +8,20 @@
             :column-filter-options="{
                 enabled: true
             }"
+            :sort-options="{
+                enabled: true,
+                initialSortBy: getSortBy('localAirTime', 'asc')
+            }"
             styleClass="vgt-table condensed schedule"
             :row-style-class="rowStyleClassFn"
+            @on-sort-change="saveSorting"
         >
             <template slot="table-row" slot-scope="props">
                 <span v-if="props.column.label == 'Airdate'" class="align-center">
-                    {{props.row.airdate ? fuzzyParseDateTime(props.row.airdate) : ''}}
+                    {{props.row.localAirTime ? fuzzyParseDateTime(props.row.localAirTime) : ''}}
                 </span>
 
-                <span v-else-if="props.column.label == 'Show'" class="align-center tv-show">
+                <span v-else-if="props.column.label == 'Show'" class="tv-show">
                     <app-link :href="`home/displayShow?showslug=${props.row.showSlug}`">{{ props.row.showName }}</app-link>
                 </span>
 
@@ -64,7 +69,7 @@
                     }" />
                 </span>
 
-                <span v-else class="align-center">
+                <span v-else>
                     {{props.formattedRow[props.column.field]}}
                 </span>
             </template>
@@ -95,8 +100,8 @@ export default {
         return {
             columns: [{
                 label: 'Airdate',
-                field: 'airdate',
-                dateInputFormat: 'yyyy-MM-dd', // E.g. 07-09-2017 19:16:25
+                field: 'localAirTime',
+                dateInputFormat: 'yyyy-MM-dd\'T\'HH:mm:ssXXX', // E.g. 07-09-2017 19:16:25
                 dateOutputFormat: 'yyyy-MM-dd HH:mm:ss',
                 type: 'date',
                 hidden: getCookie('Airdate')
@@ -115,6 +120,7 @@ export default {
             }, {
                 label: 'Network',
                 field: 'network',
+                tdClass: 'span-center',
                 hidden: getCookie('Network')
             }, {
                 label: 'Runtime',
@@ -160,5 +166,5 @@ export default {
 };
 </script>
 
-<style scoped src="../../style/vgt-table.css">
+<style scoped>
 </style>

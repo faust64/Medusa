@@ -1,7 +1,7 @@
 <template>
     <div class="display-show-template" :class="theme">
         <vue-snotify />
-        <backstretch v-if="show.id.slug" :slug="show.id.slug" />
+        <backstretch v-if="show.id.slug" :slug="show.id.slug" :key="show.id.slug" />
         <input type="hidden" id="series-id" value="">
         <input type="hidden" id="indexer-name" value="">
         <input type="hidden" id="series-slug" value="">
@@ -19,7 +19,7 @@
                 <!-- Display non-special episodes, paginate if enabled -->
                 <vue-good-table v-if="show.seasons"
                                 :columns="columns"
-                                :rows="orderSeasons"
+                                :rows="orderedSeasons"
                                 :groupOptions="{
                                     enabled: true,
                                     mode: 'span',
@@ -570,7 +570,7 @@ export default {
             const { themeName } = layout;
             return themeName || 'light';
         },
-        orderSeasons() {
+        orderedSeasons() {
             const { filterByOverviewStatus, invertTable, show } = this;
 
             if (!show.seasons) {
@@ -583,14 +583,14 @@ export default {
             if (filterByOverviewStatus && filterByOverviewStatus.filter(status => status.checked).length < filterByOverviewStatus.length) {
                 const filteredSortedSeasons = [];
                 for (const season of sortedSeasons) {
-                    const { episodes, ...res } = season;
-                    const filteredEpisodes = episodes.filter(episode => {
+                    const { children, ...res } = season;
+                    const filteredEpisodes = children.filter(episode => {
                         const episodeOverviewStatus = this.getOverviewStatus(episode.status, episode.quality, show.config.qualities);
                         const filteredStatus = filterByOverviewStatus.find(overviewStatus => overviewStatus.name === episodeOverviewStatus);
                         return !filteredStatus || filteredStatus.checked;
                     });
                     filteredSortedSeasons.push(Object.assign({
-                        episodes: filteredEpisodes
+                        children: filteredEpisodes
                     }, res));
                 }
                 sortedSeasons = filteredSortedSeasons;
@@ -1255,8 +1255,6 @@ export default {
 </script>
 
 <style scoped>
-@import '../style/modal.css';
-
 .defaultTable.displayShow {
     clear: both;
 }
@@ -1441,6 +1439,10 @@ tablesorter.css
 
 .displayShow >>> .vgt-table tr.spacer {
     height: 25px;
+}
+
+.displayShow >>> .vgt-table tr:hover {
+    opacity: 0.9;
 }
 
 .displayShow >>> .unaired {

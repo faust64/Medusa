@@ -12,6 +12,7 @@ const state = {
     subtitles: {
         enabled: null
     },
+    brokenProviders: [],
     logs: {
         debug: null,
         dbDebug: null,
@@ -51,6 +52,19 @@ const state = {
         enable: null,
         notifications: null,
         timeout: null
+    },
+    recommended: {
+        cache: {
+            shows: null,
+            trakt: null,
+            imdb: null,
+            anidb: null,
+            anilist: null
+        },
+        trakt: {
+            selectedLists: [],
+            availableLists: []
+        }
     },
     versionNotify: null,
     autoUpdate: null,
@@ -106,7 +120,13 @@ const state = {
         period: null
     },
     // Remove themeName when we get fully rid of MEDUSA.config.
-    themeName: null
+    themeName: null,
+    providers: {
+        prowlarr: {
+            url: null,
+            apikey: null
+        }
+    }
 };
 
 const mutations = {
@@ -123,6 +143,9 @@ const mutations = {
 
         state.recentShows.unshift(show); // Add the new show object to the start of the array.
         state.recentShows = state.recentShows.slice(0, 5); // Cut the array of at 5 items.
+    },
+    updateTraktSelectedLists(state, selectedLists) {
+        state.recommended.trakt.selectedLists = selectedLists;
     }
 };
 
@@ -196,6 +219,12 @@ const actions = {
                 return commit(ADD_CONFIG, {
                     section: 'main', config: { logs: { custom: reducedLogs } }
                 });
+            });
+    },
+    setTraktSelectedLists({ commit }, selectedLists) {
+        return api.patch('config/main', { recommended: { trakt: { selectedLists } } })
+            .then(() => {
+                return commit('updateTraktSelectedLists', selectedLists);
             });
     }
 };

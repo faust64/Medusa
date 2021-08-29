@@ -90,3 +90,7 @@ yarn-error.log
 # Contrib #
 ######################
 /contrib/
+
+# My #
+# ####################
+themes-default/slim/build-themes-check.sh

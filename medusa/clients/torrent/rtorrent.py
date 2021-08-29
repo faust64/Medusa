@@ -8,6 +8,7 @@ import logging
 
 from medusa import app
 from medusa.clients.torrent.generic import GenericClient
+from medusa.helper.exceptions import DownloadClientConnectionException
 from medusa.logger.adapters.style import BraceAdapter
 from medusa.schedulers.download_handler import ClientStatus
 
@@ -32,6 +33,7 @@ class RTorrentAPI(GenericClient):
         :type password: string
         """
         super(RTorrentAPI, self).__init__('rTorrent', host, username, password)
+        self._get_auth()
 
     def _get_auth(self):
         if self.auth is not None:
@@ -50,10 +52,13 @@ class RTorrentAPI(GenericClient):
             if app.SSL_CA_BUNDLE:
                 tp_kwargs['check_ssl_cert'] = app.SSL_CA_BUNDLE
 
-        if self.username and self.password:
-            self.auth = RTorrent(self.host, self.username, self.password, True, tp_kwargs=tp_kwargs)
-        else:
-            self.auth = RTorrent(self.host, None, None, True)
+        try:
+            if self.username and self.password:
+                self.auth = RTorrent(self.host, self.username, self.password, True, tp_kwargs=tp_kwargs)
+            else:
+                self.auth = RTorrent(self.host, None, None, True)
+        except Exception as error:  # No request/connection specific exception thrown.
+            raise DownloadClientConnectionException(f'Unable to authenticate with rtorrent client: {error}')
 
         return self.auth
 
@@ -81,7 +86,11 @@ class RTorrentAPI(GenericClient):
         try:
             params = self._get_params(result)
             # Send magnet to rTorrent and start it
-            torrent = self.auth.load_magnet(result.url, result.hash, start=True, params=params)
+            try:
+                torrent = self.auth.load_magnet(result.url, result.hash, start=True, params=params)
+            except DownloadClientConnectionException:
+                return False
+
             if not torrent:
                 return False
 
@@ -100,7 +109,11 @@ class RTorrentAPI(GenericClient):
         try:
             params = self._get_params(result)
             # Send torrent to rTorrent and start it
-            torrent = self.auth.load_torrent(result.content, start=True, params=params)
+            try:
+                torrent = self.auth.load_torrent(result.content, start=True, params=params)
+            except DownloadClientConnectionException:
+                return False
+
             if not torrent:
                 return False
 
@@ -120,21 +133,21 @@ class RTorrentAPI(GenericClient):
         try:
             self.auth = None
             self._get_auth()
-        except Exception:  # pylint: disable=broad-except
-            return False, 'Error: Unable to connect to {name}'.format(name=self.name)
+        except Exception:
+            return False, f'Error: Unable to connect to {self.name}'
         else:
             if self.auth is None:
-                return False, 'Error: Unable to get {name} Authentication, check your config!'.format(name=self.name)
+                return False, f'Error: Unable to get {self.name} Authentication, check your config!'
             else:
                 return True, 'Success: Connected and Authenticated'
 
     def pause_torrent(self, info_hash):
         """Get torrent and pause."""
         log.info('Pausing {client} torrent {hash} status.', {'client': self.name, 'hash': info_hash})
-        if not self._get_auth():
+        try:
+            torrent = self.auth.find_torrent(info_hash.upper())
+        except DownloadClientConnectionException:
             return False
-
-        torrent = self.auth.find_torrent(info_hash.upper())
 
         if not torrent:
             log.debug('Could not locate torrent with {hash} status.', {'hash': info_hash})
@@ -145,10 +158,10 @@ class RTorrentAPI(GenericClient):
     def remove_torrent(self, info_hash):
         """Get torrent and remove."""
         log.info('Removing {client} torrent {hash} status.', {'client': self.name, 'hash': info_hash})
-        if not self._get_auth():
+        try:
+            torrent = self.auth.find_torrent(info_hash.upper())
+        except DownloadClientConnectionException:
             return False
-
-        torrent = self.auth.find_torrent(info_hash.upper())
 
         if not torrent:
             log.debug('Could not locate torrent with {hash} status.', {'hash': info_hash})
@@ -159,9 +172,6 @@ class RTorrentAPI(GenericClient):
     def _torrent_properties(self, info_hash):
         """Get torrent properties."""
         log.debug('Get {client} torrent hash {hash} properties.', {'client': self.name, 'hash': info_hash})
-        if not self._get_auth():
-            return False
-
         torrent = self.auth.find_torrent(info_hash.upper())
 
         if not torrent:

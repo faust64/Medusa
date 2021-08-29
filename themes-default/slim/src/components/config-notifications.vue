@@ -1080,7 +1080,6 @@ export default {
             });
         }
     },
-
     beforeMount() {
         // Wait for the next tick, so the component is rendered
         this.$nextTick(() => {

@@ -193,8 +193,10 @@ const configRoutes = [
             title: 'Config - Providers',
             header: 'Search Providers',
             topMenu: 'config',
-            subMenu: configSubMenu
-        }
+            subMenu: configSubMenu,
+            converted: true
+        },
+        component: () => import('../components/config-providers.vue')
     },
     {
         path: '/config/search',
@@ -253,6 +255,7 @@ const addShowRoutes = [
             topMenu: 'home',
             converted: true
         },
+        props: route => ({ ...route.params }),
         component: () => import('../components/new-show.vue')
     },
     {
@@ -302,7 +305,7 @@ const addRecommendedRoute = {
         topMenu: 'home',
         converted: true
     },
-    component: () => import('../components/add-recommended.vue')
+    component: () => import('../components/recommended.vue')
 };
 
 /** @type {import('.').Route} */
